@@ -14,10 +14,11 @@ public class NioTest01 {
             System.out.println("1-------- pos = " + buffer.position() +", cap = " + capacity + ", lim = " + buffer.limit() + ", mark = " + buffer.mark());
         }
 
+        // 翻转此缓冲区
         buffer.flip();
         System.out.println("2-------- pos = " + buffer.position() +", cap = " + capacity + ", lim = " + buffer.limit()  + ", mark = " + buffer.mark());
 
-        for(int i = 0; i < capacity; i++) {
+        while (buffer.hasRemaining()) {
             System.out.println(buffer.get());
             System.out.println("3-------- pos = " + buffer.position() +", cap = " + capacity + ", lim = " + buffer.limit()  + ", mark = " + buffer.mark());
         }
