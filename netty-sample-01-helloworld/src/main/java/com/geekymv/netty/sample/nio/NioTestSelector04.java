@@ -35,6 +35,7 @@ public class NioTestSelector04 {
         while (true) {
             // select()方法会阻塞，直到至少有一个已注册的事件发生。
             int num = selector.select();
+            System.out.println("num = " + num);
 
             Set<SelectionKey> selectionKeys = selector.selectedKeys();
             Iterator<SelectionKey> iter = selectionKeys.iterator();
@@ -44,7 +45,7 @@ public class NioTestSelector04 {
                 // 删除处理过的key
                 iter.remove();
 
-                if((key.readyOps() & SelectionKey.OP_ACCEPT) == SelectionKey.OP_ACCEPT) {
+                if(key.isAcceptable()) {
                     ServerSocketChannel serverSocketChannel = (ServerSocketChannel) key.channel();
                     // 接受新的连接
                     SocketChannel sc = serverSocketChannel.accept();
@@ -53,10 +54,8 @@ public class NioTestSelector04 {
                     sc.register(selector, SelectionKey.OP_READ);
                     System.out.println("Got connection from " + sc);
 
-                }else if ((key.readyOps() & SelectionKey.OP_READ) == SelectionKey.OP_READ) {
+                }else if (key.isReadable()) {
                     SocketChannel sc = (SocketChannel) key.channel();
-
-                    System.out.println(sc.isConnected());
 
                     ByteBuffer buffer = ByteBuffer.allocate(3);
                     while (true) {
