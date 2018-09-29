@@ -57,10 +57,17 @@ public class NioTestSelector04 {
                 }else if (key.isReadable()) {
                     SocketChannel sc = (SocketChannel) key.channel();
 
-                    ByteBuffer buffer = ByteBuffer.allocate(3);
+                    ByteBuffer buffer = ByteBuffer.allocate(1024);
                     while (true) {
                         buffer.clear();
-                        int read = sc.read(buffer);
+                        int read = 0;
+                        try {
+                            read = sc.read(buffer);
+                        }catch (IOException ex) {
+                            sc.close();
+                            System.out.println("读取发生异常 = " + ex);
+                            break;
+                        }
                         if(read == 0) {
                             break;
                         }
@@ -72,6 +79,8 @@ public class NioTestSelector04 {
                             sc.close();
                             break;
                         }
+
+                        System.out.println("客户端发送的消息 = " + new String(buffer.array(), 0, read));
 
                         buffer.flip();
                         sc.write(buffer);
