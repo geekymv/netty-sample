@@ -239,7 +239,7 @@ public class NettyClientHandler extends SimpleChannelInboundHandler<ByteBuf> {
 
 服务端创建步骤：
 - 创建两个NioEventLoopGroup 实例，bossGroup 用于服务端接受客户端的连接，workerGroup 用于进行客户端连接SocketChannel 的网络读写；
-- 创建ServerBootstrap 实例用于启动服务端的辅助类，目的是降低服务端的开发复杂度；
+- 创建ServerBootstrap 实例是启动服务端的辅助类，目的是降低服务端的开发复杂度；
 - 调用ServerBootstrap的group 方法，将两个线程组实例当作参数传递到ServerBootstrap中；
 - 设置创建的Channel为NioServerSocketChannel，它的功能对应于Java NIO类库中的ServerSocketChannel；
 - 绑定I/O事件的处理类childHandler，主要用于处理网络IO事件，例如对消息编解码、业务处理等；
@@ -250,9 +250,16 @@ public class NettyClientHandler extends SimpleChannelInboundHandler<ByteBuf> {
 
 客户端创建步骤：
 
-- 
+- 创建客户端处理I/O 读写的NioEventLoopGroup 线程组；
+- 创建客户端辅助启动类Bootstrap 实例；
+- Channel的配置与服务端不同的是需要设置为NioSocketChannel；
+- 添加handler，使用匿名内部类ChannelInitializer，实现它的抽象方法initChannel，
+向pipline中添加我们自己的业务处理handler；
+- 调用connect 方法发起异步连接，调用同步方法等待连接成功；
+- 其他跟服务端类似。
 
-Netty的核心组件
+
+#### Netty的核心组件介绍
 
 - Channel
 Channel 是一个Java NIO的基本构造，可以把Channel类比一个Socket。
@@ -263,3 +270,4 @@ EventLoop 本身只有一个线程驱动，其处理了一个Channel 的所有I/
 - ChannelHandler
 Netty是事件驱动的网络编程框架，Netty 使用不同的事件来通知我们状态的改变或者是操作的状态。
 这使得我们可以基于已发生的事件来触发适当的动作，
+
