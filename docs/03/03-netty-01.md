@@ -238,10 +238,11 @@ public class NettyClientHandler extends SimpleChannelInboundHandler<ByteBuf> {
 下面我们总结下Netty的服务端和客户端创建基本流程：
 
 服务端创建步骤：
-- 创建两个NioEventLoopGroup 实例，bossGroup 用于服务端接受客户端的连接，workerGroup 用于进行客户端连接SocketChannel 的网络读写；
-- 创建ServerBootstrap 实例是启动服务端的辅助类，目的是降低服务端的开发复杂度；
+- 创建两个NioEventLoopGroup 实例，bossGroup 用于服务端接受客户端的连接，workerGroup 用于进行客户端连接SocketChannel 的网络读写,
+- 创建ServerBootstrap 的实例，ServerBootstrap是启动服务端的辅助类，目的是降低服务端的开发复杂度；
 - 调用ServerBootstrap的group 方法，将两个线程组实例当作参数传递到ServerBootstrap中；
-- 设置创建的Channel为NioServerSocketChannel，它的功能对应于Java NIO类库中的ServerSocketChannel；
+- 设置创建的Channel类型为NioServerSocketChannel，它的功能主要是负责创建子Channel，这些子Channel代表已接受的连接，
+这里的channel()参数类型为Class，内部是通过反射来实现Channel的创建，内部持有java.nio.channels.ServerSocketChannel的引用；
 - 绑定I/O事件的处理类childHandler，主要用于处理网络IO事件，例如对消息编解码、业务处理等；
 - 调用bind 方法绑定监听端口，链式调动同步阻塞方法sync 等待绑定操作完成，返回的ChannelFuture用于异步操作的通知回调；
 - 使用future.channel().closeFuture().sync(); 进行阻塞，直到服务端Channel关闭；
@@ -265,9 +266,49 @@ public class NettyClientHandler extends SimpleChannelInboundHandler<ByteBuf> {
 Channel 是一个Java NIO的基本构造，可以把Channel类比一个Socket。
 
 - EventLoop
-EventLoop 本身只有一个线程驱动，其处理了一个Channel 的所有I/O事件，并且在该EventLoop的整个生命周期内都不会改变。
+EventLoop 本身只有一个线程驱动（Thread），其处理了一个Channel 的所有I/O事件，并且在该EventLoop的整个生命周期内都不会改变。
+
+
+- EventLoopGroup
+NioEventLoopGroup 拥有一个或多个EventLoop，具体个数可以通过构造方法指定，一般我们可以指定bossGroup线程组的线程个数为1，
+workerGroup使用框架提供的默认个数，通过跟踪NioEventLoopGroup源代码可以发现默认个数为Runtime.getRuntime().availableProcessors() * 2。
+EventLoopGroup 负责为每个新创建的Channel 分配一个EventLoop。
+NioEventLoopGroup 内部是NioEventLoop，我们看下NioEventLoop 继承关系
+
 
 - ChannelHandler
 Netty是事件驱动的网络编程框架，Netty 使用不同的事件来通知我们状态的改变或者是操作的状态。
 这使得我们可以基于已发生的事件来触发适当的动作，
+
+- ChannelPipline
+每一个新创建的Channel 都将会被分配一个新的ChannelPipline，并且这项关联是永久性的，Channel即不能附加另一个ChannelPipline，也不能分离当前的。
+因为AbstractChannel持有一个DefaultChannelPipeline的引用，private final DefaultChannelPipeline pipeline; 在Channel初始化时被赋值，
+其中DefaultChannelPipeline中也有一个Channel的引用。这也就是说我们可以通过Channel 获取其关联的ChannelPipline，也可以通过ChannelPipline
+获取其关联的Channel，两者是一对一的关联关系。
+
+```text
+/**
+ * Creates a new instance.
+ *
+ * @param parent
+ *        the parent of this channel. {@code null} if there's no parent.
+ */
+protected AbstractChannel(Channel parent) {
+    this.parent = parent;
+    id = newId();
+    unsafe = newUnsafe();
+    pipeline = newChannelPipeline();
+}
+
+/**
+ * Returns a new {@link DefaultChannelPipeline} instance.
+ */
+protected DefaultChannelPipeline newChannelPipeline() {
+    return new DefaultChannelPipeline(this);
+}
+
+```
+
+- ChannelHandlerContext
+
 
