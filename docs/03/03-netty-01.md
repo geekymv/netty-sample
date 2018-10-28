@@ -260,20 +260,50 @@ public class NettyClientHandler extends SimpleChannelInboundHandler<ByteBuf> {
 - 其他跟服务端类似。
 
 
-#### Netty的核心组件介绍
+#### Netty的核心组件介绍及原理分析
 
 - Channel
 Channel 是一个Java NIO的基本构造，可以把Channel类比一个Socket。
 
 - EventLoop
 EventLoop 本身只有一个线程驱动（Thread），其处理了一个Channel 的所有I/O事件，并且在该EventLoop的整个生命周期内都不会改变。
+单个EventLoop可能会被指派用于服务多个Channel。
+我们看下NioEventLoop 的类层次结构：
+// TODO 此处有图
 
+在这个模型中，一个EventLoop 将由一个永远不会改变的Thread 驱动，同时任务(Runnable 或者Callable)可以直接提交给EventLoop，任务
+将被放入Queue中，会被与其关联的Thread执行。
+下面是EventLoop的父类SingleThreadEventLoop的父类SingleThreadEventExecutor 中的核心代码：
+```text
+@Override
+public void execute(Runnable task) {
+    if (task == null) {
+        throw new NullPointerException("task");
+    }
+
+    boolean inEventLoop = inEventLoop();
+    if (inEventLoop) {
+        addTask(task);
+    } else {
+        startThread();
+        addTask(task);
+        if (isShutdown() && removeTask(task)) {
+            reject();
+        }
+    }
+
+    if (!addTaskWakesUp && wakesUpForTask(task)) {
+        wakeup(inEventLoop);
+    }
+}
+
+```
 
 - EventLoopGroup
 NioEventLoopGroup 拥有一个或多个EventLoop，具体个数可以通过构造方法指定，一般我们可以指定bossGroup线程组的线程个数为1，
-workerGroup使用框架提供的默认个数，通过跟踪NioEventLoopGroup源代码可以发现默认个数为Runtime.getRuntime().availableProcessors() * 2。
-EventLoopGroup 负责为每个新创建的Channel 分配一个EventLoop。
-NioEventLoopGroup 内部是NioEventLoop，我们看下NioEventLoop 继承关系
+workerGroup使用框架提供的默认个数或者自己指定，通过跟踪NioEventLoopGroup源代码可以发现默认个数为Runtime.getRuntime().availableProcessors() * 2。
+EventLoopGroup 负责为每个新创建的Channel 分配一个EventLoop，通过EventExecutorChooser.next()方法(使用了round-robin算法)
+进行分配以获取一个均匀的分布，并且同一个EventLoop可能会被分配给多个Channel。NioEventLoopGroup 内部是NioEventLoop。
 
 
 - ChannelHandler
@@ -312,3 +342,78 @@ protected DefaultChannelPipeline newChannelPipeline() {
 - ChannelHandlerContext
 
 
+- ServerBootstrapConfig
+ServerBootstrap的配置信息
+
+
+#### 究竟EventLoopGroup 是如何为Channel 分配一个EventLoop的呢？
+
+bind()方法中 doBind方法中initAndRegister()中
+ChannelFuture regFuture = config().group().register(channel);
+
+NioEventLoopGroup的父类MultithreadEventLoopGroup 中的注册方法
+```text
+@Override
+public ChannelFuture register(Channel channel) {
+    return next().register(channel);
+}
+```
+
+next()方法返回一个通过EventExecutorChooser.next()方法返回的EventLoop
+
+NioEventLoop 的父类SingleThreadEventLoop
+```text
+@Override
+public ChannelFuture register(Channel channel) {
+    return register(new DefaultChannelPromise(channel, this));
+}
+
+@Override
+public ChannelFuture register(final ChannelPromise promise) {
+    ObjectUtil.checkNotNull(promise, "promise");
+    promise.channel().unsafe().register(this, promise);
+    return promise;
+}
+```
+将调用AbstractChannel 中的内部类AbstractUnsafe的register方法
+```text
+@Override
+public final void register(EventLoop eventLoop, final ChannelPromise promise) {
+    if (eventLoop == null) {
+        throw new NullPointerException("eventLoop");
+    }
+    if (isRegistered()) {
+        promise.setFailure(new IllegalStateException("registered to an event loop already"));
+        return;
+    }
+    if (!isCompatible(eventLoop)) {
+        promise.setFailure(
+                new IllegalStateException("incompatible event loop type: " + eventLoop.getClass().getName()));
+        return;
+    }
+
+    AbstractChannel.this.eventLoop = eventLoop;
+
+    if (eventLoop.inEventLoop()) {
+        register0(promise);
+    } else {
+        try {
+            eventLoop.execute(new Runnable() {
+                @Override
+                public void run() {
+                    register0(promise);
+                }
+            });
+        } catch (Throwable t) {
+            logger.warn(
+                    "Force-closing a channel whose registration task was not accepted by an event loop: {}",
+                    AbstractChannel.this, t);
+            closeForcibly();
+            closeFuture.setClosed();
+            safeSetFailure(promise, t);
+        }
+    }
+}
+
+```
+这段代码AbstractChannel.this.eventLoop = eventLoop;将eventLoop和Channel进行绑定。
