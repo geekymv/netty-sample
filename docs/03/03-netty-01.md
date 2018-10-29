@@ -309,11 +309,14 @@ EventLoopGroup 负责为每个新创建的Channel 分配一个EventLoop，通过
 - ChannelHandler
 Netty是事件驱动的网络编程框架，Netty 使用不同的事件来通知我们状态的改变或者是操作的状态。
 这使得我们可以基于已发生的事件来触发适当的动作，
+Netty 定义了两个最重要的ChannelHandler 子接口：
+- ChannelInboundHandler 处理入站数据以及各种状态变化；
+- ChannelOutboundHandler 处理出站数据并且允许拦截。
 
-- ChannelPipline
-每一个新创建的Channel 都将会被分配一个新的ChannelPipline，并且这项关联是永久性的，Channel即不能附加另一个ChannelPipline，也不能分离当前的。
+- ChannelPipeline
+每一个新创建的Channel 都将会被分配一个新的ChannelPipeline，并且这项关联是永久性的，Channel即不能附加另一个ChannelPipeline，也不能分离当前的。
 因为AbstractChannel持有一个DefaultChannelPipeline的引用，private final DefaultChannelPipeline pipeline; 在Channel初始化时被赋值，
-其中DefaultChannelPipeline中也有一个Channel的引用。这也就是说我们可以通过Channel 获取其关联的ChannelPipline，也可以通过ChannelPipline
+其中DefaultChannelPipeline中也有一个Channel的引用。这也就是说我们可以通过Channel 获取其关联的ChannelPipeline，也可以通过ChannelPipeline
 获取其关联的Channel，两者是一对一的关联关系。
 
 ```text
@@ -340,6 +343,9 @@ protected DefaultChannelPipeline newChannelPipeline() {
 ```
 
 - ChannelHandlerContext
+ChannelHandlerContext 代表了ChannelHandler 和ChannelPipeline 之间的关联，每当有ChannelHandler 添加到ChannelPipeline中时，
+都会创建ChannelHandlerContext，ChannelHandlerContext 的主要功能是管理它所关联的ChannelHandler 和在同一个ChannelPipeline中的其他
+ChannelHandler 之间的交互。
 
 
 - ServerBootstrapConfig
@@ -348,7 +354,7 @@ ServerBootstrap的配置信息
 
 #### 究竟EventLoopGroup 是如何为Channel 分配一个EventLoop的呢？
 
-bind()方法中 doBind方法中initAndRegister()中
+bind() --> doBind() --> initAndRegister()中
 ChannelFuture regFuture = config().group().register(channel);
 
 NioEventLoopGroup的父类MultithreadEventLoopGroup 中的注册方法
