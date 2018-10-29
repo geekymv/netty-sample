@@ -347,9 +347,11 @@ ChannelHandlerContext 代表了ChannelHandler 和ChannelPipeline 之间的关联
 都会创建ChannelHandlerContext，ChannelHandlerContext 的主要功能是管理它所关联的ChannelHandler 和在同一个ChannelPipeline中的其他
 ChannelHandler 之间的交互。
 
+ChannelHandlerContext事件流
+此处有图 p84
 
 - ServerBootstrapConfig
-ServerBootstrap的配置信息
+代表ServerBootstrap的配置信息
 
 
 #### 究竟EventLoopGroup 是如何为Channel 分配一个EventLoop的呢？
