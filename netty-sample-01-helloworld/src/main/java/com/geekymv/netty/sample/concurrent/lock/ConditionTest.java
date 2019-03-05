@@ -34,9 +34,7 @@ public class ConditionTest {
 
     }
 
-
     public void producer() {
-
         try {
             lock.lock();
             while (flag) {
@@ -47,8 +45,9 @@ public class ConditionTest {
                 }
             }
             System.out.println(Thread.currentThread().getName() + "-----生产-----" + number.incrementAndGet());
-            done.signal();
+            // 生产之后让当前线程等待，并通知消费者消费
             flag = true;
+            done.signal();
         }finally {
             lock.unlock();
         }
@@ -56,7 +55,6 @@ public class ConditionTest {
 
 
     public void consumer() {
-
         try {
             lock.lock();
             while (!flag) {
@@ -67,6 +65,7 @@ public class ConditionTest {
                 }
             }
             System.out.println(Thread.currentThread().getName() + "-----消费-----" + number.decrementAndGet());
+            // 消费之后，让当前线程等待，并通知生产者生产
             flag = false;
             done.signal();
         }finally {
