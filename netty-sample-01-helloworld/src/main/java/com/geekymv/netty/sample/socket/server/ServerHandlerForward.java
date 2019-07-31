@@ -15,8 +15,9 @@ public class ServerHandlerForward extends SimpleChannelInboundHandler<String> {
         System.out.println("第二个 server handler 接收到信息 = " + msg);
 
         Channel channel = Client.getInstance().getChannel();
-        if(!channel.isActive()) {
+        if(channel == null || !channel.isActive()) {
             System.out.println("channel is not acvive...");
+            return;
         }
         channel.writeAndFlush(msg);
     }

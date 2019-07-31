@@ -17,6 +17,8 @@ public class Client {
 
     public static final Client client = new Client();
 
+//    private final Bootstrap bootstrap;
+
     private Client(){
         connect();
     }
@@ -41,7 +43,13 @@ public class Client {
 
     private EventLoopGroup eventLoopGroup = new NioEventLoopGroup();
 
+//    private static final ClientHandler clientHandler = new ClientHandler();
+
+
     public void connect() {
+        if(channel != null) {
+            channel.close();
+        }
         Bootstrap bootstrap = new Bootstrap();
         bootstrap.group(eventLoopGroup)
                 .channel(NioSocketChannel.class)
@@ -58,7 +66,6 @@ public class Client {
                         pipeline.addLast(new ClientHandler());
                     }
                 });
-
         try {
             ChannelFuture channelFuture = bootstrap.connect("localhost", 9876)
                     .addListener((ChannelFuture future)-> {
@@ -66,10 +73,10 @@ public class Client {
                             future.channel().close();
                             EventLoop loop = future.channel().eventLoop();
                             loop.schedule(()-> {
-                                System.out.println("re connect...");
-                                Client.getInstance().connect();
+                                System.out.println("bootstrap re connect...");
+//                                Client.getInstance().connect();
 
-                            }, 1L, TimeUnit.SECONDS);
+                            }, 3L, TimeUnit.SECONDS);
                         }else {
                             System.out.println("connect success...");
                             Client.this.channel = future.channel();

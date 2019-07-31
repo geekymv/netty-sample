@@ -5,6 +5,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Random;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.SynchronousQueue;
@@ -27,11 +28,11 @@ public class ExecutorTest {
      *  SynchronousQueue 当往这个队列
      */
     ThreadPoolExecutor executor  = new ThreadPoolExecutor(10, 20,
-            5, TimeUnit.SECONDS, new ArrayBlockingQueue<>(1024), new DefaultThreadFactory("my-pool"));
+            5, TimeUnit.SECONDS, new ArrayBlockingQueue<>(10), new DefaultThreadFactory("my-pool"));
     @Test
     public void test() {
 
-        executor.execute(()-> {
+        new Thread(()-> {
             while (true) {
                 int corePoolSize = executor.getCorePoolSize();
                 int maximumPoolSize = executor.getMaximumPoolSize();
@@ -39,21 +40,33 @@ public class ExecutorTest {
                 BlockingQueue<Runnable> queue = executor.getQueue();
                 int queueSize = queue.size();
                 if(queueSize != 0) {
-                    System.out.println("corePoolSize = " + corePoolSize + ", activeCount = " + activeCount + ", maximumPoolSize = " + maximumPoolSize + ", queueSize = " + queueSize);
+                    logger.info("corePoolSize = " + corePoolSize + ", activeCount = " + activeCount + ", maximumPoolSize = " + maximumPoolSize + ", queueSize = " + queueSize);
                 }
             }
-        });
+        }).start();
 
-        for(int i = 0; i < 12; i++) {
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        for(int i = 0; i < 30; i++) {
             final int tmp = i;
+            logger.info(tmp + " add ");
             executor.execute(()-> {
+                try {
+                    Thread.sleep(20 * 1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
                 logger.info(tmp + ", hello");
             });
         }
 
 
         try {
-            Thread.sleep(10 * 1000);
+            Thread.sleep(20 * 1000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
