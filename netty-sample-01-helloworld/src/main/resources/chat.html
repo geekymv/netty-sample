@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>chat</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.5/css/bulma.min.css">
+    <script defer src="https://use.fontawesome.com/releases/v5.3.1/js/all.js"></script>
+</head>
+<body>
+    <div class="columns">
+        <div class="control column is-one-quarter">
+            <textarea id="msg" class="textarea has-fixed-size" placeholder="Fixed size textarea"></textarea>
+        </div>
+    </div>
+
+    <button type="button" onclick="send()">send</button>
+
+    <script>
+        var socket = new WebSocket("ws://127.0.0.1:6789/ws")
+        if(window.WebSocket) {
+            console.log("浏览器支持websocket");
+            socket.onopen = function () {
+                console.log("连接建立成功")
+            }
+
+            socket.onmessage = function (ev) {
+                console.log("接收到的消息" + ev.data)
+            }
+
+        }else {
+            console.log("浏览器不支持websocket");
+        }
+
+        function send() {
+            var msg = document.getElementById("msg");
+            socket.send(msg.value);
+        }
+
+    </script>
+</body>
+</html>
