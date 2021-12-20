@@ -11,6 +11,7 @@
 
     <modules>
         <module>netty-sample-01-helloworld</module>
+        <module>nio-sample</module>
     </modules>
 
     <properties>
